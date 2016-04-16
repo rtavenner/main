@@ -1,8 +1,10 @@
 (require 'cl-opengl)
 (require 'cl-glu)
 (require 'lispbuilder-sdl)
+
+(load "player.lisp")
  
-(unless (boundp '+cube-vertices+) (
+(unless (boundp '+cube-vertices+) 
   (defconstant +window-width+  600)
   (defconstant +window-height+ 600)
 
@@ -23,7 +25,27 @@
       (#(0 3 7 4) #(0 -1 0))
       (#(4 5 1 0) #(-1 0 0))
       (#(3 2 6 7) #(1 0 0))))
-  ))
+
+
+
+  (defconstant +prism-vertices+
+    #(#(0 0 0)
+      #(0 0 1)
+      #(0 1 0)
+      #(1 1 0)
+      #(1 0 0)
+      #(0 1 1)
+      #(1 1 1)
+      #(1 0 1)))
+
+  (defconstant +prism-faces+
+    '((#(4 7 6 5) #(0 0 1))
+      (#(5 6 2 1) #(0 1 0))
+      (#(1 2 3 0) #(0 0 -1))
+      (#(0 3 7 4) #(0 -1 0))
+      (#(4 5 1 0) #(-1 0 0))
+      (#(3 2 6 7) #(1 0 0))))
+  )
 
 (defun draw-figure (verts faces)
   (labels (
@@ -40,44 +62,35 @@
     )
     (map 'nil #'(lambda (x) (draw-face (first x) (second x))) faces) ))
  
- 
-(defun draw-frame (rotx roty rotz)
+
+(defvar obj1 nil)
+(defvar player)
+
+(defun draw-frame ()
+
   (gl:matrix-mode :modelview)
   (gl:push-matrix)
 
-  (gl:translate (aref eye 0)
-                (aref eye 1)
-                (aref eye 2))
+  (gl:rotate (* 57.297 (altitude player)) 1 0 0)
+  (gl:rotate (* 57.297 (azimuth  player)) 0 1 0)
 
-  ; (gl:translate 0 0 0)
+  (gl:translate (- (xpos player))
+                (- (ypos player))
+                (- (zpos player)))
 
-
-  (gl:translate 0.5 0.5 0.5)
-  (gl:rotate rotx 1 0 0)
-  (gl:rotate roty 0 1 0)
-  (gl:rotate rotz 0 0 1)
-  (gl:translate -0.5 -0.5 -0.5)
   (gl:call-list obj1)
-  ; (draw-figure +cube-vertices+ +cube-faces+)
-  ; (gl:translate -1.0 -1.0 -1.0)
-  ; (gl:call-list obj1)
-  ; (print rotx)
 
-  (gl:pop-matrix))
+  (gl:pop-matrix) )
    
-(defvar eye  #(0.0 0.0 0.0 0 0 0))  ; x y z  rotx roty rotz
-(defvar cmds #(0 0))  ; fwd/back left/right
-(defvar obj1)
-; (defvar surf)
 
 (defun start ()
-  (let ((rotx 0)
-        (roty 0)
-        (rotz 0))
-    (sdl:with-init ()
-      ; (gl:viewport 0 0 +window-width+ +window-height+)
+  (let ((dt (diff-time))
+       )
 
-      ; (sdl:set-gl-attribute :sdl-gl-depth-size   16)
+    (setf player (make-instance 'player :x 0 :y 0 :z 0))
+
+
+    (sdl:with-init ()
 
       (sdl:window +window-width+ +window-height+
           :title-caption "c.lisp"
@@ -95,9 +108,6 @@
       (gl:matrix-mode :projection)
       (gl:load-identity)
       (glu:perspective 50 (/ +window-height+ +window-width+) 0.2 20.0)
-      (glu:look-at  0.0 1.5 2     ; camera
-                    0.0 1.0 -2    ; object
-                    0 1 0)        ; zenith
  
       (gl:matrix-mode :modelview)
       (gl:load-identity)
@@ -117,11 +127,28 @@
  
       (setf obj1 (gl:gen-lists 1))
       (gl:with-new-list (obj1 :compile)
+        ; (gl:matrix-mode :modelview)
+        ; (gl:push-matrix)
         (gl:material :front :ambient-and-diffuse #(0.7 0.7 0.7 0.4))
-        (draw-figure +cube-vertices+ +cube-faces+) )
- 
-      ; (sdl:delay 1000)
 
+        (gl:push-matrix)
+        (gl:translate 0 0 -5)
+        (draw-figure +cube-vertices+ +cube-faces+)
+        (gl:pop-matrix)
+
+        (gl:push-matrix)
+        (gl:translate -2 0 -5)
+        (draw-figure +cube-vertices+ +cube-faces+)
+        (gl:pop-matrix)
+
+        (gl:push-matrix)
+        (gl:translate -2 0 -3)
+        (draw-figure +cube-vertices+ +cube-faces+)
+        (gl:pop-matrix)
+
+        ; (gl:pop-matrix)
+        )
+ 
       (sdl:with-events ()
         (:quit-event () t)
 
@@ -134,31 +161,37 @@
         (:key-down-event (:key key)
           (case key
             (:sdl-key-escape (sdl:push-quit-event))
-            (:sdl-key-w (incf (aref cmds 0)  0.1))
-            (:sdl-key-a (incf (aref cmds 1)  0.1))
-            (:sdl-key-s (incf (aref cmds 0) -0.1))
-            (:sdl-key-d (incf (aref cmds 1) -0.1))
+            (:sdl-key-w      (incr-lon  player  1.0))
+            (:sdl-key-s      (incr-lon  player -1.0))
+            (:sdl-key-d      (incr-lat  player  1.0))
+            (:sdl-key-a      (incr-lat  player -1.0))
+            (:sdl-key-lctrl  (incr-ver  player  1.0))
+            (:sdl-key-space  (incr-ver  player -1.0))
+            (:sdl-key-up     (incr-alt  player  1.0))
+            (:sdl-key-down   (incr-alt  player -1.0))
+            (:sdl-key-left   (incr-azi  player -1.0))
+            (:sdl-key-right  (incr-azi  player  1.0))
           ))
 
         (:key-up-event (:key key)
           (case key
-            (:sdl-key-w (incf (aref cmds 0) -0.1))
-            (:sdl-key-a (incf (aref cmds 1) -0.1))
-            (:sdl-key-s (incf (aref cmds 0)  0.1))
-            (:sdl-key-d (incf (aref cmds 1)  0.1))
+            (:sdl-key-w      (incr-lon  player -1.0))
+            (:sdl-key-s      (incr-lon  player  1.0))
+            (:sdl-key-d      (incr-lat  player -1.0))
+            (:sdl-key-a      (incr-lat  player  1.0))
+            (:sdl-key-lctrl  (incr-ver  player -1.0))
+            (:sdl-key-space  (incr-ver  player  1.0))
+            (:sdl-key-up     (incr-alt  player -1.0))
+            (:sdl-key-down   (incr-alt  player  1.0))
+            (:sdl-key-left   (incr-azi  player  1.0))
+            (:sdl-key-right  (incr-azi  player -1.0))
           ))
 
         (:idle
-
-          ; (sdl:with-surface (surf)
-          ;   (print surf)
-          (print sdl:*DEFAULT-SURFACE*)
-
-          (incf (aref eye 0) (aref cmds 1))
-          (incf (aref eye 2) (aref cmds 0))
-          (setq roty (mod (+ roty 0.7) 360.0))
+          (update player (funcall dt))
+          (print player)
           (gl:clear :color-buffer :depth-buffer)
-          (draw-frame rotx roty rotz)
+          (draw-frame)
           (sdl:update-display)
         )
       ))))
