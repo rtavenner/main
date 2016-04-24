@@ -1,31 +1,20 @@
 ; player.lisp
 
-
-; returns a function that gives fractional seconds since it was last called
-(defun diff-time ()
-  (multiple-value-bind (sec usec) (get-time-of-day)
-    (lambda ()
-      (multiple-value-bind (new-sec new-usec) (get-time-of-day)
-        (prog1
-          (+ (- new-sec sec) (* 0.000001 (- new-usec usec)))
-          (setq sec  new-sec
-                usec new-usec) )))))
-
 (defclass player () (
-  (x    :reader xpos       :initarg :x)  ; +x is East
-  (y    :reader ypos       :initarg :y)  ; +y is up
-  (z    :reader zpos       :initarg :z)  ; -z is North
-  (alt  :reader altitude   :initform 0)  ; +alt is up, when facing forward
-  (azi  :reader azimuth    :initform 0)  ; +azi is right from -z
-  (vlat :initform 0)
-  (vlon :initform 0)
-  (vver :initform 0)
-  (valt :initform 0)
-  (vazi :initform 0)
+  (x    :type float :reader xpos     :initarg :x)  ; +x is East
+  (y    :type float :reader ypos     :initarg :y)  ; +y is up
+  (z    :type float :reader zpos     :initarg :z)  ; -z is North
+  (alt  :type float :reader altitude :initform 0)  ; +alt is up, when facing forward
+  (azi  :type float :reader azimuth  :initform 0)  ; +azi is right from -z
+  (vlat :type float :initform 0)
+  (vlon :type float :initform 0)
+  (vver :type float :initform 0)
+  (valt :type float :initform 0)
+  (vazi :type float :initform 0)
   ))
 
-(defmethod print ((self player))
-  (format t "[~A, ~A, ~A] [~A, ~A]~%"
+(defmethod describe-object ((self player) stream)
+  (format stream "~6,2f ~6,2f ~6,2f  ~6,2f ~6,2f~%"
     (slot-value self 'x)
     (slot-value self 'y)
     (slot-value self 'z)
